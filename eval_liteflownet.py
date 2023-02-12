@@ -1,58 +1,104 @@
+import argparse
+import time
+
 import torch
-import numpy
+import numpy as np
+import pandas as pd
 import PIL
 import PIL.Image
-import time
-import argparse
+import cv2 as cv
+from skimage import color, morphology, img_as_float
+from skimage.io import imread, imshow
+from skimage.transform import resize
+from skimage.morphology import convex_hull_image
 
-from liteflownet import estimate
+# from liteflownet import estimate
 
-arguments_strModel = 'default' # 'default', or 'kitti', or 'sintel'
-arguments_strOne = '/data/Workspace/FishFeedingAnalysis/liteflownet/images/one.png'
-arguments_strTwo = '/data/Workspace/FishFeedingAnalysis/liteflownet/images/two.png'
-arguments_strOut = './out.flo'
+import math
+import queue
+from video_utils.multithread import Worker
 
-if __name__ == '__main__':
-    tenOne = torch.FloatTensor(numpy.ascontiguousarray(numpy.array(PIL.Image.open(arguments_strOne))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0)))
-    tenTwo = torch.FloatTensor(numpy.ascontiguousarray(numpy.array(PIL.Image.open(arguments_strTwo))[:, :, ::-1].transpose(2, 0, 1).astype(numpy.float32) * (1.0 / 255.0)))
+def demo(args):
+    num_threads = 4
+    sample_rate = 5
 
-    model_time = time.time()
-    tenOutput = estimate(tenOne, tenTwo)
-    print("duration = {}".format(time.time() - model_time))
+    cap = cv.VideoCapture(args.video)
+    size = (int(cap.get(cv.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv.CAP_PROP_FRAME_HEIGHT)))
+    fps = cap.get(cv.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
-    model_time = time.time()
-    tenOutput = estimate(tenOne, tenTwo)
-    print("duration = {}".format(time.time() - model_time))
-
-    model_time = time.time()
-    tenOutput = estimate(tenOne, tenTwo)
-    print("duration = {}".format(time.time() - model_time))
-
-    model_time = time.time()
-    tenOutput = estimate(tenOne, tenTwo)
-    print("duration = {}".format(time.time() - model_time))
-    print("tenOutput type: {}".format(tenOutput))
+    fnos = list(range(0, total_frames, sample_rate))
+    tasks = [[] for _ in range(num_threads)]
+    frames_per_task = math.ceil(len(fnos) / num_threads)
+    for idx, fno in enumerate(fnos):
+        tasks[math.floor(idx / frames_per_task)].append(fno)
     
-    # objOutput = open(arguments_strOut, 'wb')
+    # mask
+    cap.set(cv.CAP_PROP_POS_FRAMES, 5001)
+    success = cap.grab()
+    success, img = cap.retrieve()
+    cv.imwrite("./mask.jpg", img)
+    img = img_as_float(img) # opencv to skimage
+    img = resize(img, (img.shape[0] // 4, img.shape[1] // 4), anti_aliasing=True)
+    lum = color.rgb2gray(img)
+    mask = morphology.remove_small_holes(morphology.remove_small_objects(lum < 0.8, 5000),500)
+    mask = morphology.opening(mask, morphology.disk(3))
+    mask = convex_hull_image(~mask)
 
-    # numpy.array([ 80, 73, 69, 72 ], numpy.uint8).tofile(objOutput)
-    # numpy.array([ tenOutput.shape[2], tenOutput.shape[1] ], numpy.int32).tofile(objOutput)
-    # numpy.array(tenOutput.numpy().transpose(1, 2, 0), numpy.float32).tofile(objOutput)
+    threads = []
+    for _ in range(num_threads):
+        w = Worker(mask=mask)
+        threads.append(w)
+        w.start()
+    
+    results = queue.Queue(maxsize=100)
+    on_done = lambda x: results.put(x)
+    for idx, w in enumerate(threads):
+        w.decode(args.video, tasks[idx], on_done)
+    
+    t = time.time()
+    eval_results = []
+    while True:
+        try:
+            image_pair = results.get(timeout=5)
+            (idx1, img1), (idx2, img2) = image_pair
+            eval_results.append((idx1, np.random.randint(0, 1000)))
+        except:
+            break
+    (all_idx, all_results) = tuple(zip(*eval_results))
+    s = np.argsort(all_idx)  # 从小到大排序
+    all_idx = np.array(all_idx)[s]
+    all_results = np.array(all_results)[s]
+    save_file = pd.DataFrame({"idx": all_idx, "all_results": all_results})
+    save_file.to_csv("./abc.csv", index=None)
+    print("duration = ", time.time() - t)
 
-    # objOutput.close()
+    cap.release()
+    print("done")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', help="restore checkpoint")
-    parser.add_argument('--model_name', help="define model name", default="GMA")
-    parser.add_argument('--path', help="dataset for evaluation")
-    parser.add_argument('--num_heads', default=1, type=int,
-                        help='number of heads in attention and aggregation')
-    parser.add_argument('--position_only', default=False, action='store_true',
-                        help='only use position-wise attention')
-    parser.add_argument('--position_and_content', default=False, action='store_true',
-                        help='use position and content-wise attention')
-    parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
-    args = parser.parse_args()
 
-    demo(args)
+parser = argparse.ArgumentParser()
+parser.add_argument("--video", default="/Users/liuziyi/Downloads/ln-szln-p001-s0007_main_20221125191111_26.mp4")
+args = parser.parse_args()
+demo(args)
+
+"""
+python eval_liteflownet.py --video /Users/liuziyi/Downloads/ln-szln-p001-s0007_main_20221125191111_26.mp4
+"""
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--video", default="/Users/liuziyi/Downloads/ln-szln-p001-s0007_main_20221125191111_26.mp4")
+#     args = parser.parse_args()
+#     demo(args)
+
+    # mask = mask(args.video_path, idx=5001)
+    # # cv.imshow("mask", mask)
+    # # key = cv.waitKey(0)
+    # mask = resize(mask, (mask.shape[0] // 4, mask.shape[1] // 4), anti_aliasing=True)
+    # lum = color.rgb2gray(mask)
+    # mask = morphology.remove_small_holes(morphology.remove_small_objects(lum < 0.8, 5000),500)
+    # mask = morphology.opening(mask, morphology.disk(3))
+    # mask = convex_hull_image(~mask)
+    # cv.imshow("mask", mask.astype(numpy.uint8))
+    # key = cv.waitKey(0)
+    # demo(args)
