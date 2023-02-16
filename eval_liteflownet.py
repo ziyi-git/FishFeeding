@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import PIL
 import PIL.Image
-import cv2 as cv
+import cv2
 from skimage import color, morphology, img_as_float
 from skimage.io import imread, imshow
 from skimage.transform import resize
@@ -23,10 +23,10 @@ def demo(args):
     sample_rate = 5
 
     print(args.video)
-    cap = cv.VideoCapture(args.video)
-    size = (int(cap.get(cv.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv.CAP_PROP_FRAME_HEIGHT)))
-    fps = cap.get(cv.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+    cap = cv2.VideoCapture(args.video)
+    size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     fnos = list(range(0, total_frames, sample_rate))
     tasks = [[] for _ in range(num_threads)]
@@ -35,10 +35,10 @@ def demo(args):
         tasks[math.floor(idx / frames_per_task)].append(fno)
     
     # mask
-    cap.set(cv.CAP_PROP_POS_FRAMES, 5001)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 5001)
     success = cap.grab()
     success, img = cap.retrieve()
-    cv.imwrite("./mask.jpg", img)
+    cv2.imwrite("./mask.jpg", img)
     img = img_as_float(img) # opencv to skimage
     img = resize(img, (img.shape[0] // 4, img.shape[1] // 4), anti_aliasing=True)
     lum = color.rgb2gray(img)
@@ -99,13 +99,13 @@ python eval_liteflownet.py --video /Users/liuziyi/Downloads/ln-szln-p001-s0007_m
 #     demo(args)
 
     # mask = mask(args.video_path, idx=5001)
-    # # cv.imshow("mask", mask)
-    # # key = cv.waitKey(0)
+    # # cv2.imshow("mask", mask)
+    # # key = cv2.waitKey(0)
     # mask = resize(mask, (mask.shape[0] // 4, mask.shape[1] // 4), anti_aliasing=True)
     # lum = color.rgb2gray(mask)
     # mask = morphology.remove_small_holes(morphology.remove_small_objects(lum < 0.8, 5000),500)
     # mask = morphology.opening(mask, morphology.disk(3))
     # mask = convex_hull_image(~mask)
-    # cv.imshow("mask", mask.astype(numpy.uint8))
-    # key = cv.waitKey(0)
+    # cv2.imshow("mask", mask.astype(numpy.uint8))
+    # key = cv2.waitKey(0)
     # demo(args)
