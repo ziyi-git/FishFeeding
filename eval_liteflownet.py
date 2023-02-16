@@ -12,16 +12,17 @@ from skimage.io import imread, imshow
 from skimage.transform import resize
 from skimage.morphology import convex_hull_image
 
-# from liteflownet import estimate
+from liteflownet.run import estimate
 
 import math
 import queue
 from video_utils.multithread import Worker
 
 def demo(args):
-    num_threads = 4
+    num_threads = 1
     sample_rate = 5
 
+    print(args.video)
     cap = cv.VideoCapture(args.video)
     size = (int(cap.get(cv.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv.CAP_PROP_FRAME_HEIGHT)))
     fps = cap.get(cv.CAP_PROP_FPS)
@@ -59,10 +60,16 @@ def demo(args):
     t = time.time()
     eval_results = []
     while True:
+        # image_pair = results.get(timeout=5)
+        # (idx1, img1), (idx2, img2) = image_pair
+        # tenOutput = estimate(img1, img2)
         try:
             image_pair = results.get(timeout=5)
             (idx1, img1), (idx2, img2) = image_pair
-            eval_results.append((idx1, np.random.randint(0, 1000)))
+            tenOutput = estimate(img1, img2)
+            tenOutput = tenOutput.numpy()
+            tenOutput = np.sqrt(np.power(tenOutput[0, :, :], 2) + np.power(tenOutput[1, :, :], 2)).sum()
+            eval_results.append((idx1, tenOutput))
         except:
             break
     (all_idx, all_results) = tuple(zip(*eval_results))
@@ -78,7 +85,7 @@ def demo(args):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--video", default="/Users/liuziyi/Downloads/ln-szln-p001-s0007_main_20221125191111_26.mp4")
+parser.add_argument("--video", default="/data/Data/xyz.mp4")
 args = parser.parse_args()
 demo(args)
 

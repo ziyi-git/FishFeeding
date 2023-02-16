@@ -52,16 +52,3 @@ class Worker(threading.Thread):
                     break
             count += 1
             success = cap.grab()
-
-# class ImageLoader(object):
-#     def __init__(self, video, num_workers=1, sample_rate=1):
-#         self.video = video
-#         # self.num_workers = num_workers
-#         self.sample_rate = sample_rate
-#         self.tasks = [[] for _ in range(num_workers)]
-#         self.fno = 
-#         toal_frames = 
-    
-#     def read(self):
-
-# def 
