@@ -1,6 +1,1 @@
-
-*.pyc
-*.pyc
-*.pyc
-video_utils/__pycache__/__init__.cpython-310.pyc
-video_utils/__pycache__/video_preprocess.cpython-310.pyc
+**/__pycache__/
