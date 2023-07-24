@@ -57,18 +57,5 @@ def resize_and_mask_video(video_path, out_video_path=None, show_out_video=False)
     if show_out_video:
         cv2.destroyAllWindows()
 
-resize_and_mask_video("/Users/liuziyi/workspace/FishFeeding/demo.mp4", "/Users/liuziyi/workspace/FishFeeding/demo_out.mp4")
-# _get_mask("/Users/liuziyi/Desktop/TMP/xx_c/demo.mp4", 5000)
-
-# from skimage import color, morphology, img_as_float
-# from skimage.io import imread, imshow
-# from skimage.transform import resize
-# from skimage.morphology import convex_hull_image
-
-# img = imread('path_to_your_image_file')
-# img = resize(img, (img.shape[0] // 4, img.shape[1] // 4), anti_aliasing=True)
-# lum = color.rgb2gray(img)
-# mask = morphology.remove_small_holes(morphology.remove_small_objects(lum < 0.8, 5000),500)
-# mask = morphology.opening(mask, morphology.disk(3))
-# mask = convex_hull_image(~mask)
+# resize_and_mask_video("/Users/liuziyi/workspace/FishFeeding/demo2.mp4", "/Users/liuziyi/workspace/FishFeeding/demo_out.mp4")
 
