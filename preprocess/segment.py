@@ -5,9 +5,9 @@ from skimage.transform import resize
 from skimage.morphology import convex_hull_image
 import numpy as np
 
+
 def _get_mask(img):    
     img = img_as_float(img) # opencv to skimage
-    img = resize(img, (img.shape[0] // 4, img.shape[1] // 4), anti_aliasing=True)
     lum = color.rgb2gray(img)
     mask = morphology.remove_small_holes(morphology.remove_small_objects(lum < 0.8, 5000),500)
     mask = morphology.opening(mask, morphology.disk(3))
@@ -18,15 +18,16 @@ def _get_mask(img):
 
     return mask
 
-def resize_and_mask_video(video_path, out_video_path=None, show_out_video=False):
+def mask_video(video_path, out_video_path=None, show_out_video=False):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print("Error opening video file")
+        print(f"Error opening {video_path}\n")
+    else:
+        print(f"Open {video_path}\n")
     
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
-    size = (int(frame_width // 4), int(frame_height // 4))
     
     cap.set(cv2.CAP_PROP_POS_FRAMES, 5000)
     ret, frame = cap.read()
@@ -34,14 +35,12 @@ def resize_and_mask_video(video_path, out_video_path=None, show_out_video=False)
 
     if out_video_path is not None:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 或者使用 'XVID'
-        out = cv2.VideoWriter(out_video_path, fourcc, fps, size)
+        out = cv2.VideoWriter(out_video_path, fourcc, fps, (frame_width, frame_height))
     
-    ii = 0
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            frame = cv2.resize(frame, size)
             frame = cv2.bitwise_and(frame, frame, mask=mask.astype(np.uint8))
             if show_out_video:
                 cv2.imshow('Frame', frame)
@@ -59,3 +58,18 @@ def resize_and_mask_video(video_path, out_video_path=None, show_out_video=False)
 
 # resize_and_mask_video("/Users/liuziyi/workspace/FishFeeding/demo2.mp4", "/Users/liuziyi/workspace/FishFeeding/demo_out.mp4")
 
+def capture_frame(video_path, fno=0):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"Error opening {video_path}\n")
+    else:
+        print(f"Open {video_path}\n")
+    
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    
+    cap.set(cv2.CAP_PROP_POS_FRAMES, fno)
+    ret, frame = cap.read()
+
+    cv2.imwrite('frame.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 90])

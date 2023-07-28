@@ -44,12 +44,14 @@ def concat_video_clips(src_root, dst_root, max_workers=4):
     
     t1 = time.time()
 
-    base_commands = [["ffmpeg", "-f", "concat", "-safe", "0", "-i", fp1, "-c", "copy", fp2] 
-                     for (fp1, fp2) in zip(ffmpeg_param1s, ffmpeg_param2s)]
+    # base_commands = [["ffmpeg", "-f", "concat", "-safe", "0", "-i", fp1, "-c", "copy", fp2] 
+    #                  for (fp1, fp2) in zip(ffmpeg_param1s, ffmpeg_param2s)]
+    base_commands = [
+        ["ffmpeg", "-f", "concat", "-safe", "0", "-i", fp1, "-pix_fmt", "yuv420p", "-c:v", "libx264", "-c:a", "copy", fp2] for (fp1, fp2) in zip(ffmpeg_param1s, ffmpeg_param2s)]
     failed_messages = queue.Queue(maxsize=100)
     fm_callback = lambda x: failed_messages.put(x)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(exec_command, base_command, fm_callback) for base_command in base_commands]
+        futures = [executor.submit(exec_command, base_command, fm_callback) for base_command in base_commands[:1]]
         for future in concurrent.futures.as_completed(futures):
             pass  # Optionally, do something with the results
 
@@ -94,11 +96,42 @@ def recode_videos(src_root, dst_root, max_workers=4):
     t2 = time.time()
     print("Duration for recode all files: ", t2 - t1)
 
+def resize_video(src_root, dst_root, max_workers=4):
+    extension = ".mp4"  # The file extension to search for
+    identifier = "ln-szln"  # The identifier to search for in the file paths
+
+    src_files = retrieve_files(src_root, extension, identifier)
+    dst_files = [sf.replace(src_root, dst_root) for sf in src_files]
+
+    for df in dst_files:
+        make_dir(df)
+
+    import time
+    t1 = time.time()
+
+    # base_commands = [['ffmpeg', '-i', sf, '-vf', 'scale=iw/4:ih/4', df] for (sf, df) in zip(src_files, dst_files)]
+    base_commands = [['ffmpeg', '-i', sf, '-c:v', 'h264_videotoolbox', '-vf', 'scale=960:540', '-q:v', '50', df] for (sf, df) in zip(src_files, dst_files)]
+    # failed_messages = queue.Queue(maxsize=100)
+    # fm_callback = lambda x: failed_messages.put(x)
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # futures = [executor.submit(resize_and_mask_video, sf, df) for (sf, df) in zip(src_files, dst_files)]
+        futures = [executor.submit(exec_command, base_command) for base_command in base_commands]
+        for future in concurrent.futures.as_completed(futures):
+            pass  # Optionally, do something with the results
+
+    t2 = time.time()
+    print("Duration for recode all files: ", t2 - t1)  # Duration for recode all files:  6437.959105014801
+
 if __name__ == '__main__':
     # src_root = "/Users/liuziyi/Library/Mobile Documents/com~apple~CloudDocs/硬盘中转/"
     # dst_root = "/Users/liuziyi/workspace/梁孟实验/"
     # recode_videos(src_root, dst_root)
 
-    src_root = "/Users/liuziyi/Library/Mobile Documents/com~apple~CloudDocs/硬盘中转/"
-    dst_root = "/Users/liuziyi/workspace/梁孟实验/"
-    concat_video_clips(src_root, dst_root, max_workers=4)
+    # src_root = "/Users/liuziyi/Library/Mobile Documents/com~apple~CloudDocs/硬盘中转/"
+    # dst_root = "/Users/liuziyi/workspace/梁孟实验/"
+    # concat_video_clips(src_root, dst_root, max_workers=4)
+
+    src_root = "/Users/liuziyi/workspace/梁孟实验/"
+    dst_root = "/Users/liuziyi/workspace/resized_videos_ffmpeg/"
+    resize_video(src_root, dst_root, max_workers=4)
