@@ -6,6 +6,8 @@ from collections import defaultdict
 
 from utils.files import retrieve_files, make_dir, exec_command
 
+NEW_SIZE = 'scale=228:128'  # 'scale=960:540'
+
 def concat_video_clips(src_root, dst_root, max_workers=4):
     extension = ".mp4"  # The file extension to search for
     identifier = "ln-szln"  # The identifier to search for in the file paths
@@ -110,7 +112,7 @@ def resize_video(src_root, dst_root, max_workers=4):
     t1 = time.time()
 
     # base_commands = [['ffmpeg', '-i', sf, '-vf', 'scale=iw/4:ih/4', df] for (sf, df) in zip(src_files, dst_files)]
-    base_commands = [['ffmpeg', '-i', sf, '-c:v', 'h264_videotoolbox', '-vf', 'scale=960:540', '-q:v', '50', df] for (sf, df) in zip(src_files, dst_files)]
+    base_commands = [['ffmpeg', '-i', sf, '-c:v', 'h264_videotoolbox', '-vf', NEW_SIZE, '-q:v', '50', df] for (sf, df) in zip(src_files, dst_files)]
     # failed_messages = queue.Queue(maxsize=100)
     # fm_callback = lambda x: failed_messages.put(x)
     # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -132,6 +134,6 @@ if __name__ == '__main__':
     # dst_root = "/Users/liuziyi/workspace/梁孟实验/"
     # concat_video_clips(src_root, dst_root, max_workers=4)
 
-    src_root = "/Users/liuziyi/workspace/梁孟实验/"
-    dst_root = "/Users/liuziyi/workspace/resized_videos_ffmpeg/"
+    src_root = "/Users/liuziyi/workspace/960_540/"  # "/Users/liuziyi/workspace/梁孟实验/"
+    dst_root = "/Users/liuziyi/workspace/228_128/"  # "/Users/liuziyi/workspace/resized_videos_ffmpeg/"
     resize_video(src_root, dst_root, max_workers=4)
